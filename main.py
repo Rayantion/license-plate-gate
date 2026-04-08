@@ -132,7 +132,13 @@ def main():
         print(f"Loaded {len(plates)} plates from CSV")
     
     print("\n📷 Initializing camera...")
-    cap = cv2.VideoCapture(config.CAMERA_INDEX)
+
+    # Try DirectShow backend first (more reliable on Windows)
+    cap = cv2.VideoCapture(config.CAMERA_INDEX, cv2.CAP_DSHOW)
+
+    if not cap.isOpened():
+        # Fallback to default backend
+        cap = cv2.VideoCapture(config.CAMERA_INDEX)
 
     if not cap.isOpened():
         print("ERROR: Cannot open camera!")
