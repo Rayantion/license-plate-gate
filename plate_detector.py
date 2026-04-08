@@ -69,11 +69,16 @@ def get_plate_regions(frame):
     gray, blur = preprocess_image(frame)
     contours = find_plate_contours(blur)
 
+    print(f"DEBUG: Found {len(contours)} total contours")
     plate_regions = []
+    valid_count = 0
 
     for contour in contours:
+        x, y, w, h = cv2.boundingRect(contour)
+        print(f"DEBUG: Contour {w}x{h}, aspect={w/h:.2f}")
+
         if is_likely_plate(contour, frame.shape):
-            x, y, w, h = cv2.boundingRect(contour)
+            valid_count += 1
             # Add padding
             pad = config.PLATE_REGION_PADDING
             x = max(0, x - pad)
@@ -91,6 +96,7 @@ def get_plate_regions(frame):
                 'height': h
             })
 
+    print(f"DEBUG: {valid_count} valid plate regions")
     return plate_regions
 
 
