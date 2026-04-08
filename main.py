@@ -133,14 +133,17 @@ def main():
     
     print("\n📷 Initializing camera...")
     cap = cv2.VideoCapture(config.CAMERA_INDEX)
-    
+
     if not cap.isOpened():
         print("ERROR: Cannot open camera!")
         return
-    
+
+    # Optimize camera settings for lower latency
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, config.FRAME_WIDTH)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.FRAME_HEIGHT)
-    
+    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # Reduce buffer for lower latency
+    cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)  # Enable autofocus
+
     print(f"Camera ready! Resolution: {config.FRAME_WIDTH}x{config.FRAME_HEIGHT}")
     print("\nPress 'q' to quit")
     print("=" * 50)

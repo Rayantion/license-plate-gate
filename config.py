@@ -18,8 +18,8 @@ API_URL = ""  # e.g., "https://your-api.com/check-plate"
 # CAMERA SETTINGS
 # ================
 CAMERA_INDEX = 0  # 0 for default webcam
-FRAME_WIDTH = 640
-FRAME_HEIGHT = 480
+FRAME_WIDTH = 320  # Lower = faster (less processing)
+FRAME_HEIGHT = 240  # Lower = faster
 
 # ====================
 # PLATE DETECTION
