@@ -31,10 +31,17 @@ def load_from_google_sheets():
         for row in rows[1:]:  # Skip header
             cells = row.get('c', [])
             if cells and len(cells) > 0:
-                plate_val = cells[0].get('v', '')
+                # Safely get plate value (column A)
+                cell0 = cells[0]
+                if cell0 is None:
+                    continue
+                plate_val = cell0.get('v', '')
                 if plate_val:
                     plate = str(plate_val).strip().upper().replace(' ', '').replace('-', '')
-                    owner = str(cells[1].get('v', '')) if len(cells) > 1 else ''
+                    # Safely get owner value (column B) - handle None cells
+                    owner = ''
+                    if len(cells) > 1 and cells[1] is not None:
+                        owner = str(cells[1].get('v', ''))
                     if plate:
                         plates.add(plate)
                         owners[plate] = owner
