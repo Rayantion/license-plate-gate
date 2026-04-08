@@ -17,6 +17,7 @@ last_check_time = 0
 current_status = "WAITING"
 display_text = "Scanning..."
 current_owner = ""
+frame_count = 0  # For frame skipping
 
 
 def draw_status(frame, status, plate_text=None, owner=None):
@@ -56,61 +57,79 @@ def draw_status(frame, status, plate_text=None, owner=None):
 
 def process_plate(frame):
     """Process frame to detect and read license plates"""
-    global last_checked_plate, last_check_time, current_status, display_text, current_owner
-    
+    global last_checked_plate, last_check_time, current_status, display_text, current_owner, frame_count
+
+    current_time = time.time()
+    time_since_check = current_time - last_check_time
+    frame_count += 1
+
+    # Check if in cooldown period (skip OCR to reduce lag)
+    if time_since_check < config.CHECK_COOLDOWN:
+        # Still detect plates but skip OCR
+        plate_regions = get_plate_regions(frame)
+        if plate_regions and config.SHOW_DEBUG:
+            frame = draw_plate_boxes(frame, plate_regions)
+        cooldown_remaining = config.CHECK_COOLDOWN - time_since_check
+        display_text = f"Cooldown: {cooldown_remaining:.1f}s"
+        current_status = "COOLDOWN"
+        frame = draw_status(frame, current_status, last_checked_plate, current_owner)
+        return frame, None
+
+    # Frame skipping - only process every N frames to reduce lag
+    if frame_count % config.SKIP_FRAMES != 0:
+        display_text = "Scanning..."
+        current_status = "WAITING"
+        frame = draw_status(frame, current_status)
+        return frame, None
+
     # Find potential plate regions
     plate_regions = get_plate_regions(frame)
-    
+
     if not plate_regions:
         current_status = "WAITING"
         display_text = "Scanning..."
+        frame = draw_status(frame, current_status)
         return frame, None
-    
+
     # Try to read each plate region
     detected_plate = None
-    
+
     for region in plate_regions:
         plate_image = region['image']
         plate_text = read_plate(plate_image)
-        
+
         if plate_text:
             normalized = normalize_plate(plate_text)
             # Taiwan plates are typically 4-7 chars
             if normalized and 4 <= len(normalized) <= 8:
                 detected_plate = normalized
                 break
-    
+
     if detected_plate:
-        current_time = time.time()
-        
-        # Check cooldown or new plate
-        if last_checked_plate != detected_plate or \
-           current_time - last_check_time > config.CHECK_COOLDOWN:
-            
-            # Check database
-            result = is_allowed_with_source(detected_plate)
-            
-            last_checked_plate = detected_plate
-            last_check_time = current_time
-            
-            if result['allowed']:
-                current_status = "ALLOWED"
-                display_text = f"ALLOWED: {detected_plate}"
-                current_owner = result.get('owner', '')
-                print(f"✅ ALLOWED: {detected_plate} ({current_owner})")
-            else:
-                current_status = "DENIED"
-                display_text = f"DENIED: {detected_plate}"
-                current_owner = ""
-                print(f"❌ DENIED: {detected_plate}")
-    
+        # Check database
+        result = is_allowed_with_source(detected_plate)
+
+        last_checked_plate = detected_plate
+        last_check_time = current_time
+
+        if result['allowed']:
+            current_status = "ALLOWED"
+            display_text = f"ALLOWED: {detected_plate}"
+            current_owner = result.get('owner', '')
+            print(f"✅ ALLOWED: {detected_plate} ({current_owner})")
+        else:
+            current_status = "DENIED"
+            display_text = f"DENIED: {detected_plate}"
+            current_owner = ""
+            print(f"❌ DENIED: {detected_plate}")
+
     # Draw debug boxes
     if config.SHOW_DEBUG and plate_regions:
         frame = draw_plate_boxes(frame, plate_regions)
-    
+
     # Draw status
     frame = draw_status(frame, current_status, last_checked_plate, current_owner)
-    
+
     return frame, detected_plate
 
 
