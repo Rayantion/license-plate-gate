@@ -14,18 +14,15 @@ print("OCR reader loaded!")
 
 
 def preprocess_for_ocr(plate_image):
-    """Preprocess plate image for better OCR results (PlateVision approach)"""
+    """Preprocess plate image for better OCR results (optimized for speed)"""
     # Convert to grayscale
     if len(plate_image.shape) == 3:
         gray = cv2.cvtColor(plate_image, cv2.COLOR_BGR2GRAY)
     else:
         gray = plate_image
 
-    # Apply Gaussian blur
-    blurred = cv2.GaussianBlur(gray, (3, 3), 0)
-
-    # Apply Otsu's thresholding (automatic threshold selection)
-    _, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    # Apply Otsu's thresholding directly (skip blur for speed - plates are usually clear enough)
+    _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
     return thresh
 

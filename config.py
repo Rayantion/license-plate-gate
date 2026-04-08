@@ -52,11 +52,11 @@ BOX_THICKNESS = 2
 TEXT_THICKNESS = 1
 
 # Timing settings
-CHECK_COOLDOWN = 3  # seconds between plate reads (reduces lag)
+CHECK_COOLDOWN = 2  # seconds between plate reads (reduced from 3 for faster response)
 GATE_OPEN_DURATION = 5
 
 # Frame skip settings (reduce lag by skipping OCR on some frames)
-SKIP_FRAMES = 2  # Process every Nth frame (1=every frame, 2=every other, etc)
+SKIP_FRAMES = 1  # Process every frame (was 2=every other frame)
 
 # ==================
 # TAIWAN PLATE FORMAT

@@ -12,9 +12,21 @@ import requests
 # Google Visualization API endpoint (no auth required)
 GVIZ_URL = f"https://docs.google.com/spreadsheets/d/{config.SHEET_ID}/gviz/tq?tqx=out:json"
 
+# Cache for Google Sheets data (reduces API calls)
+_sheets_cache = None
+_cache_time = 0
+_CACHE_DURATION = 300  # Cache for 5 minutes
 
-def load_from_google_sheets():
+
+def load_from_google_sheets(use_cache=True):
     """Load plates from Google Sheets using public gviz API (no credentials needed)"""
+    global _sheets_cache, _cache_time
+
+    # Use cached data if available (reduces API calls for speed)
+    import time
+    if use_cache and _sheets_cache and (time.time() - _cache_time) < _CACHE_DURATION:
+        return _sheets_cache
+
     try:
         # Fetch from Google Visualization API
         response = requests.get(GVIZ_URL, timeout=10)
@@ -52,7 +64,9 @@ def load_from_google_sheets():
 
         if plates:
             print(f"✅ Loaded {len(plates)} plates from Google Sheets")
-            return {'plates': plates, 'owners': owners}
+            _sheets_cache = {'plates': plates, 'owners': owners}
+            _cache_time = time.time()
+            return _sheets_cache
         else:
             print("⚠️ No plates found in Google Sheets")
             return None
