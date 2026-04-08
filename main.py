@@ -73,9 +73,11 @@ def process_plate(frame):
         if result['allowed']:
             current_status = "ALLOWED"
             current_owner = result.get('owner', '')
-            print(f"✅ ALLOWED: {detected_plate} ({current_owner})")
-            # Draw GREEN box
-            draw_plate_boxes_with_status(frame, [valid_plate_region], "ALLOWED", detected_plate, current_owner)
+            current_vehicle_type = result.get('vehicle_type', '')
+            print(f"✅ ALLOWED: {detected_plate} ({current_owner}) - {current_vehicle_type}")
+            # Draw GREEN box with owner and vehicle type
+            owner_data = {'owner': current_owner, 'vehicle_type': current_vehicle_type}
+            draw_plate_boxes_with_status(frame, [valid_plate_region], "ALLOWED", detected_plate, owner_data)
         else:
             current_status = "DENIED"
             current_owner = ""
@@ -87,8 +89,6 @@ def process_plate(frame):
         # This prevents false positives (lights, random objects) from showing yellow boxes
         current_status = "WAITING"
         # Don't draw any boxes - let user know no valid plate detected
-
-    return frame, detected_plate
 
     return frame, detected_plate
 

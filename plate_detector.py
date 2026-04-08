@@ -134,9 +134,19 @@ def draw_plate_boxes_with_status(frame, plate_regions, status, plate_text=None, 
         # Draw status text
         status_text = status
         if plate_text:
-            status_text = f"{status}: {plate_text}"
             if owner:
-                status_text = f"{plate_text} - {owner}"
+                # owner can be a string or dict with 'owner' and 'vehicle_type' keys
+                if isinstance(owner, dict):
+                    owner_name = owner.get('owner', '')
+                    vehicle_type = owner.get('vehicle_type', '')
+                    if vehicle_type:
+                        status_text = f"{plate_text} | {owner_name} | {vehicle_type}"
+                    else:
+                        status_text = f"{plate_text} - {owner_name}"
+                else:
+                    status_text = f"{plate_text} - {owner}"
+            else:
+                status_text = f"{status}: {plate_text}"
 
         cv2.putText(output, status_text, (x + 5, label_y - 7),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)

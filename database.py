@@ -42,9 +42,13 @@ def load_from_google_sheets():
                     owner = ''
                     if len(cells) > 1 and cells[1] is not None:
                         owner = str(cells[1].get('v', ''))
+                    # Safely get vehicle type (column C) - handle None cells
+                    vehicle_type = ''
+                    if len(cells) > 2 and cells[2] is not None:
+                        vehicle_type = str(cells[2].get('v', ''))
                     if plate:
                         plates.add(plate)
-                        owners[plate] = owner
+                        owners[plate] = {'owner': owner, 'vehicle_type': vehicle_type}
 
         if plates:
             print(f"✅ Loaded {len(plates)} plates from Google Sheets")
@@ -133,10 +137,12 @@ def is_allowed_with_source(plate_text):
     # Option 1: Try Google Sheets first
     gs_data = load_from_google_sheets()
     if gs_data and normalized in gs_data['plates']:
+        owner_data = gs_data['owners'].get(normalized, {'owner': '', 'vehicle_type': ''})
         return {
             'allowed': True,
             'source': 'google_sheets',
-            'owner': gs_data['owners'].get(normalized, '')
+            'owner': owner_data.get('owner', '') if isinstance(owner_data, dict) else owner_data,
+            'vehicle_type': owner_data.get('vehicle_type', '') if isinstance(owner_data, dict) else ''
         }
     
     # Option 2: Check API if configured
