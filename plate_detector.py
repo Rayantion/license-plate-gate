@@ -24,7 +24,10 @@ def find_plate_contours(blur_gray):
     edges = cv2.Canny(bilateral, 30, 200)
 
     # Find contours
-    contours, _ = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours, _ = cv2.findContours(edges.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Sort by area and keep top 20 (like PlateVision)
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)[:20]
 
     return contours
 
@@ -53,9 +56,9 @@ def is_likely_plate(contour, frame_shape):
     # Check rectangularity (plates are roughly rectangular)
     perimeter = cv2.arcLength(contour, True)
     if perimeter > 0:
-        approx = cv2.approxPolyDP(contour, 0.02 * perimeter, True)
-        # Plates should have 4-6 corners (allowing for some distortion)
-        if len(approx) < 4 or len(approx) > 8:
+        approx = cv2.approxPolyDP(contour, 0.04 * perimeter, True)
+        # Plates should have 4 corners (quadrilateral) - like PlateVision
+        if len(approx) != 4:
             return False
 
     return True
