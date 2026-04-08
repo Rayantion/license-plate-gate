@@ -51,12 +51,15 @@ def process_plate(frame):
     detected_plate = None
     valid_plate_region = None
 
+    print(f"DEBUG: Found {len(plate_regions)} potential plate regions")
     for region in plate_regions:
         plate_image = region['image']
         plate_text = read_plate(plate_image)
+        print(f"DEBUG: OCR result: {plate_text}")
 
         if plate_text:
             normalized = normalize_plate(plate_text)
+            print(f"DEBUG: Normalized: {normalized}, Taiwan format: {is_taiwan_plate_format(normalized)}")
             # Validate Taiwan plate format
             if is_taiwan_plate_format(normalized):
                 detected_plate = normalized
