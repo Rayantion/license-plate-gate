@@ -56,9 +56,9 @@ def is_likely_plate(contour, frame_shape):
     # Check rectangularity (plates are roughly rectangular)
     perimeter = cv2.arcLength(contour, True)
     if perimeter > 0:
-        approx = cv2.approxPolyDP(contour, 0.04 * perimeter, True)
-        # Plates should have 4 corners (quadrilateral) - like PlateVision
-        if len(approx) != 4:
+        approx = cv2.approxPolyDP(contour, 0.05 * perimeter, True)
+        # Plates should have 4-6 corners (allowing for phone screen distortion/angle)
+        if len(approx) < 4 or len(approx) > 6:
             return False
 
     return True

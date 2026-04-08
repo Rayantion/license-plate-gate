@@ -25,12 +25,13 @@ FRAME_HEIGHT = 240  # Lower = faster
 # PLATE DETECTION
 # ====================
 # Taiwan plate dimensions (approximate)
-MIN_PLATE_WIDTH = 80
-MIN_PLATE_HEIGHT = 25
+# Reduced minimums for phone screen detection
+MIN_PLATE_WIDTH = 40   # Was 80 - phone screens show smaller plates
+MIN_PLATE_HEIGHT = 15  # Was 25 - phone screens show smaller plates
 MAX_PLATE_WIDTH = 400
 MAX_PLATE_HEIGHT = 150
-ASPECT_RATIO_MIN = 2.0
-ASPECT_RATIO_MAX = 5.5
+ASPECT_RATIO_MIN = 1.5  # Was 2.0 - more lenient for phone angles
+ASPECT_RATIO_MAX = 6.0  # Was 5.5 - more lenient
 PLATE_REGION_PADDING = 10
 
 # OCR settings
