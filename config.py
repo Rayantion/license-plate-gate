@@ -4,7 +4,7 @@
 # DATABASE SETTINGS
 # ==================
 # Choose data source: "csv", "google_sheets", or "api"
-DATA_SOURCE = "csv"  # Change to "google_sheets" to use Google Sheets
+DATA_SOURCE = "google_sheets"  # Using Google Sheets
 
 # Google Sheets (if using DATA_SOURCE = "google_sheets")
 SHEET_ID = "1VIAztguGHNYrQDWzkVjCGVAdkprd8BmBfH4hACuD3Ck"  # Get from your Google Sheet URL
