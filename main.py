@@ -83,9 +83,12 @@ def process_plate(frame):
             # Draw RED box
             draw_plate_boxes_with_status(frame, [valid_plate_region], "DENIED", detected_plate)
     else:
-        # No valid plate read - keep showing DETECTING (yellow)
-        current_status = "DETECTING"
-        draw_plate_boxes_with_status(frame, plate_regions, "DETECTING")
+        # No valid Taiwan plate read after full OCR - reset to WAITING (no boxes)
+        # This prevents false positives (lights, random objects) from showing yellow boxes
+        current_status = "WAITING"
+        # Don't draw any boxes - let user know no valid plate detected
+
+    return frame, detected_plate
 
     return frame, detected_plate
 
