@@ -30,7 +30,8 @@ def process_plate(frame):
     # Find potential plate regions
     plate_regions = get_plate_regions(frame)
 
-    # No plates detected - reset status to WAITING
+    # Always show boxes when ANY contours are found (even if not perfect plates)
+    # This gives user visual feedback that system is working
     if not plate_regions:
         current_status = "WAITING"
         return frame, None
@@ -47,19 +48,20 @@ def process_plate(frame):
         draw_plate_boxes_with_status(frame, plate_regions, "DETECTING")
         return frame, None
 
-    # Try to read each plate region
+    # Try to read each plate region (only valid plates for OCR)
     detected_plate = None
     valid_plate_region = None
 
-    print(f"DEBUG: Found {len(plate_regions)} potential plate regions")
     for region in plate_regions:
+        # Only run OCR on regions that pass plate validation
+        if not region.get('is_valid_plate', True):
+            continue
+
         plate_image = region['image']
         plate_text = read_plate(plate_image)
-        print(f"DEBUG: OCR result: {plate_text}")
 
         if plate_text:
             normalized = normalize_plate(plate_text)
-            print(f"DEBUG: Normalized: {normalized}, Taiwan format: {is_taiwan_plate_format(normalized)}")
             # Validate Taiwan plate format
             if is_taiwan_plate_format(normalized):
                 detected_plate = normalized

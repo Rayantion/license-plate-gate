@@ -65,38 +65,34 @@ def is_likely_plate(contour, frame_shape):
 
 
 def get_plate_regions(frame):
-    """Find all potential license plate regions"""
+    """Find all potential license plate regions - lenient detection for visual feedback"""
     gray, blur = preprocess_image(frame)
     contours = find_plate_contours(blur)
 
-    print(f"DEBUG: Found {len(contours)} total contours")
     plate_regions = []
-    valid_count = 0
 
+    # First: add all contours that pass basic size check (for visual feedback)
     for contour in contours:
         x, y, w, h = cv2.boundingRect(contour)
-        print(f"DEBUG: Contour {w}x{h}, aspect={w/h:.2f}")
 
-        if is_likely_plate(contour, frame.shape):
-            valid_count += 1
-            # Add padding
+        # Very lenient check - just show anything rectangular-ish
+        if w >= 30 and h >= 10 and w/h >= 1.2 and w/h <= 8:
             pad = config.PLATE_REGION_PADDING
             x = max(0, x - pad)
             y = max(0, y - pad)
             w = min(frame.shape[1] - x, w + pad * 2)
             h = min(frame.shape[0] - y, h + pad * 2)
 
-            # Crop the plate region
             plate_region = frame[y:y+h, x:x+w]
             plate_regions.append({
                 'image': plate_region,
                 'x': x,
                 'y': y,
                 'width': w,
-                'height': h
+                'height': h,
+                'is_valid_plate': is_likely_plate(contour, frame.shape)
             })
 
-    print(f"DEBUG: {valid_count} valid plate regions")
     return plate_regions
 
 
