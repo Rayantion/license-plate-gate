@@ -4,54 +4,48 @@ import csv
 import os
 import json
 import config
+import requests
 
-# Google Sheets credentials
-CREDENTIALS_FILE = "credentials.json"
+# Google Sheets credentials (no longer needed - using public API)
+# CREDENTIALS_FILE = "credentials.json"
+
+# Google Visualization API endpoint (no auth required)
+GVIZ_URL = f"https://docs.google.com/spreadsheets/d/{config.SHEET_ID}/gviz/tq?tqx=out:json"
 
 
 def load_from_google_sheets():
-    """Load plates from Google Sheets"""
+    """Load plates from Google Sheets using public gviz API (no credentials needed)"""
     try:
-        import gspread
-        from google.auth import credentials
-        from google.oauth2 import service_account
-        
-        # Load credentials
-        if not os.path.exists(CREDENTIALS_FILE):
-            print(f"Warning: {CREDENTIALS_FILE} not found")
-            return None
-        
-        # Authorize
-        credentials = service_account.Credentials.from_service_account_file(
-            CREDENTIALS_FILE,
-            scopes=['https://www.googleapis.com/auth/spreadsheets.readonly']
-        )
-        
-        # Connect to sheet
-        gc = gspread.authorize(credentials)
-        sheet = gc.open_by_key(config.SHEET_ID).sheet1
-        
-        # Get all values
-        data = sheet.get_all_values()
-        
-        # Parse plates (skip header row)
+        # Fetch from Google Visualization API
+        response = requests.get(GVIZ_URL, timeout=10)
+        text = response.text
+
+        # Parse JSON response (wrapped in google.visualization.Query.setResponse())
+        json_match = json.loads(text[text.find('{'):text.rfind('}')+1])
+        rows = json_match['table']['rows']
+
+        # Parse plates (skip header)
         plates = set()
         owners = {}
-        
-        for row in data[1:]:  # Skip header
-            if row and len(row) > 0:
-                plate = row[0].strip().upper().replace(' ', '').replace('-', '')
-                if plate:
-                    plates.add(plate)
-                    if len(row) > 1:
-                        owners[plate] = row[1]
-        
-        print(f"✅ Loaded {len(plates)} plates from Google Sheets")
-        return {'plates': plates, 'owners': owners}
-        
-    except ImportError:
-        print("Install gspread: pip install gspread google-auth")
-        return None
+
+        for row in rows[1:]:  # Skip header
+            cells = row.get('c', [])
+            if cells and len(cells) > 0:
+                plate_val = cells[0].get('v', '')
+                if plate_val:
+                    plate = str(plate_val).strip().upper().replace(' ', '').replace('-', '')
+                    owner = str(cells[1].get('v', '')) if len(cells) > 1 else ''
+                    if plate:
+                        plates.add(plate)
+                        owners[plate] = owner
+
+        if plates:
+            print(f"✅ Loaded {len(plates)} plates from Google Sheets")
+            return {'plates': plates, 'owners': owners}
+        else:
+            print("⚠️ No plates found in Google Sheets")
+            return None
+
     except Exception as e:
         print(f"Error loading from Google Sheets: {e}")
         return None
