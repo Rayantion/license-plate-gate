@@ -56,7 +56,7 @@ CHECK_COOLDOWN = 2  # seconds between plate reads (reduced from 3 for faster res
 GATE_OPEN_DURATION = 5
 
 # Frame skip settings (reduce lag by skipping OCR on some frames)
-SKIP_FRAMES = 1  # Process every frame (was 2=every other frame)
+SKIP_FRAMES = 3  # Process every 3rd frame (reduces lag significantly)
 
 # ==================
 # TAIWAN PLATE FORMAT
