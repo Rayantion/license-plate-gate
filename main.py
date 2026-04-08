@@ -6,93 +6,50 @@ Main program that runs the complete LPR gate system.
 import cv2
 import time
 import config
-from plate_detector import get_plate_regions, draw_plate_boxes
-from ocr_reader import read_plate, normalize_plate
+from plate_detector import get_plate_regions, draw_plate_boxes_with_status
+from ocr_reader import read_plate, normalize_plate, is_taiwan_plate_format
 from database import is_allowed_with_source, load_from_google_sheets, load_allowed_plates
 
 
 # State variables
 last_checked_plate = None
 last_check_time = 0
-current_status = "WAITING"
-display_text = "Scanning..."
+current_status = "WAITING"  # WAITING, DETECTING, ALLOWED, DENIED, COOLDOWN
 current_owner = ""
-frame_count = 0  # For frame skipping
-
-
-def draw_status(frame, status, plate_text=None, owner=None):
-    """Draw status overlay on frame"""
-    output = frame.copy()
-    height, width = output.shape[:2]
-    
-    # Status color
-    if status == "ALLOWED":
-        color = (0, 255, 0)  # Green
-        bg_color = (0, 100, 0)
-        text = f"ALLOWED: {plate_text}"
-    elif status == "DENIED":
-        color = (0, 0, 255)  # Red
-        bg_color = (0, 0, 100)
-        text = f"DENIED: {plate_text or 'Unknown'}"
-    else:
-        color = (255, 255, 0)  # Yellow
-        bg_color = (100, 100, 0)
-        text = "SCANNING..."
-    
-    # Draw status box
-    cv2.rectangle(output, (0, height - 80), (width, height), bg_color, -1)
-    cv2.rectangle(output, (0, height - 80), (width, height), color, 3)
-    
-    # Draw main status text
-    cv2.putText(output, text, (20, height - 50), 
-                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-    
-    # Draw owner if available
-    if owner and status == "ALLOWED":
-        cv2.putText(output, f"Owner: {owner}", (20, height - 25), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 255, 200), 1)
-    
-    return output
+frame_count = 0
 
 
 def process_plate(frame):
     """Process frame to detect and read license plates"""
-    global last_checked_plate, last_check_time, current_status, display_text, current_owner, frame_count
+    global last_checked_plate, last_check_time, current_status, current_owner, frame_count
 
     current_time = time.time()
     time_since_check = current_time - last_check_time
     frame_count += 1
 
-    # Check if in cooldown period (skip OCR to reduce lag)
+    # Find potential plate regions
+    plate_regions = get_plate_regions(frame)
+
+    # No plates detected - reset status to WAITING
+    if not plate_regions:
+        current_status = "WAITING"
+        return frame, None
+
+    # Check if in cooldown period - still show DETECTING boxes but skip OCR
     if time_since_check < config.CHECK_COOLDOWN:
-        # Still detect plates but skip OCR
-        plate_regions = get_plate_regions(frame)
-        if plate_regions and config.SHOW_DEBUG:
-            frame = draw_plate_boxes(frame, plate_regions)
-        cooldown_remaining = config.CHECK_COOLDOWN - time_since_check
-        display_text = f"Cooldown: {cooldown_remaining:.1f}s"
-        current_status = "COOLDOWN"
-        frame = draw_status(frame, current_status, last_checked_plate, current_owner)
+        current_status = "DETECTING"
+        draw_plate_boxes_with_status(frame, plate_regions, "DETECTING")
         return frame, None
 
     # Frame skipping - only process every N frames to reduce lag
     if frame_count % config.SKIP_FRAMES != 0:
-        display_text = "Scanning..."
-        current_status = "WAITING"
-        frame = draw_status(frame, current_status)
-        return frame, None
-
-    # Find potential plate regions
-    plate_regions = get_plate_regions(frame)
-
-    if not plate_regions:
-        current_status = "WAITING"
-        display_text = "Scanning..."
-        frame = draw_status(frame, current_status)
+        current_status = "DETECTING"
+        draw_plate_boxes_with_status(frame, plate_regions, "DETECTING")
         return frame, None
 
     # Try to read each plate region
     detected_plate = None
+    valid_plate_region = None
 
     for region in plate_regions:
         plate_image = region['image']
@@ -100,9 +57,10 @@ def process_plate(frame):
 
         if plate_text:
             normalized = normalize_plate(plate_text)
-            # Taiwan plates are typically 4-7 chars
-            if normalized and 4 <= len(normalized) <= 8:
+            # Validate Taiwan plate format
+            if is_taiwan_plate_format(normalized):
                 detected_plate = normalized
+                valid_plate_region = region
                 break
 
     if detected_plate:
@@ -114,21 +72,20 @@ def process_plate(frame):
 
         if result['allowed']:
             current_status = "ALLOWED"
-            display_text = f"ALLOWED: {detected_plate}"
             current_owner = result.get('owner', '')
             print(f"✅ ALLOWED: {detected_plate} ({current_owner})")
+            # Draw GREEN box
+            draw_plate_boxes_with_status(frame, [valid_plate_region], "ALLOWED", detected_plate, current_owner)
         else:
             current_status = "DENIED"
-            display_text = f"DENIED: {detected_plate}"
             current_owner = ""
             print(f"❌ DENIED: {detected_plate}")
-
-    # Draw debug boxes
-    if config.SHOW_DEBUG and plate_regions:
-        frame = draw_plate_boxes(frame, plate_regions)
-
-    # Draw status
-    frame = draw_status(frame, current_status, last_checked_plate, current_owner)
+            # Draw RED box
+            draw_plate_boxes_with_status(frame, [valid_plate_region], "DENIED", detected_plate)
+    else:
+        # No valid plate read - keep showing DETECTING (yellow)
+        current_status = "DETECTING"
+        draw_plate_boxes_with_status(frame, plate_regions, "DETECTING")
 
     return frame, detected_plate
 
@@ -138,10 +95,10 @@ def main():
     print("=" * 50)
     print("License Plate Recognition Gate System")
     print("=" * 50)
-    
+
     # Show database info
     print(f"\n📊 Data source: {config.DATA_SOURCE}")
-    
+
     if config.DATA_SOURCE == "google_sheets":
         gs = load_from_google_sheets()
         if gs:
@@ -149,7 +106,7 @@ def main():
     else:
         plates = load_allowed_plates()
         print(f"Loaded {len(plates)} plates from CSV")
-    
+
     print("\n📷 Initializing camera...")
 
     # Try DirectShow backend first (more reliable on Windows)
@@ -166,28 +123,28 @@ def main():
     # Optimize camera settings for lower latency
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, config.FRAME_WIDTH)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.FRAME_HEIGHT)
-    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # Reduce buffer for lower latency
-    cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)  # Enable autofocus
+    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+    cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
 
     print(f"Camera ready! Resolution: {config.FRAME_WIDTH}x{config.FRAME_HEIGHT}")
     print("\nPress 'q' to quit")
     print("=" * 50)
-    
+
     while True:
         ret, frame = cap.read()
         if not ret:
             print("ERROR: Cannot read frame")
             break
-        
+
         processed_frame, detected = process_plate(frame)
-        
+
         cv2.imshow("License Gate Control", processed_frame)
-        
+
         key = cv2.waitKey(1) & 0xFF
         if key == ord('q'):
             print("\nQuitting...")
             break
-    
+
     cap.release()
     cv2.destroyAllWindows()
     print("Done!")

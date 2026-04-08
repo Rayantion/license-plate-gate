@@ -79,11 +79,37 @@ def normalize_plate(plate_text):
     """Normalize plate format (remove spaces, dashes, etc)"""
     if not plate_text:
         return None
-    
+
     # Remove common separators
     plate_text = plate_text.replace(' ', '').replace('-', '').replace('.', '')
-    
+
     # Convert to uppercase
     plate_text = plate_text.upper()
-    
+
     return plate_text
+
+
+def is_taiwan_plate_format(plate_text):
+    """Validate if text matches Taiwan license plate format"""
+    import re
+
+    if not plate_text:
+        return False
+
+    # Common Taiwan plate patterns:
+    # AB-1234 (old style, 2 letters + 4 digits)
+    # 51A-1234, 52A-1234 (3 chars: 2 digits + 1 letter + 4 digits)
+    # 123-ABC (3 digits + 3 letters, common for motorcycles)
+    # ABC-1234 (3 letters + 4 digits, special vehicles)
+    # 1234-AB (4 digits + 2 letters, very old style)
+
+    patterns = [
+        r'^[A-Z]{2}\d{4}$',      # AB-1234 (old style)
+        r'^\d{2}[A-Z]\d{4}$',    # 51A-1234
+        r'^\d{3}[A-Z]{3}$',      # 123-ABC (motorcycle)
+        r'^[A-Z]{3}\d{4}$',      # ABC-1234 (special)
+        r'^\d{4}[A-Z]{2}$',      # 1234-AB (very old)
+        r'^[A-Z]\d{2}[A-Z]\d{4}$',  # A12A-1234 (electric vehicles)
+    ]
+
+    return any(re.match(p, plate_text) for p in patterns)
